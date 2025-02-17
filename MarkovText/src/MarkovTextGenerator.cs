@@ -5,27 +5,10 @@ namespace MarkovText;
 
 public partial class MarkovTextGenerator
 {
-    /// <summary>
-    /// The System.Random class implementation is abstracted through IRandomNumberGenerator to allow mocking during unit tests.
-    /// </summary>
-    private class DefaultRandom : IRandomNumberGenerator
-    {
-        private readonly Random random;
 
-        public DefaultRandom(Random random)
-        {
-            this.random = random;
-        }
-
-        public int Next(int maxValue)
-        {
-            return random.Next(maxValue);
-        }
-    }
 
     public const string DefaultCorpusPath = "Resources/thecorsetandthecrinoline.txt";
 
-    private readonly IRandomNumberGenerator random;
     private readonly List<string[]> StarterKeys = new();
     private readonly Dictionary<string[], List<string>> PrefixToSuffix = new(new StringArrayEqualityComparer());
     private readonly int Order;
@@ -44,35 +27,17 @@ public partial class MarkovTextGenerator
     [GeneratedRegex(@"\s+")]
     private static partial Regex MultipleWhitespaceRegex();
 
-    public MarkovTextGenerator(string path, int order=2)
+    public MarkovTextGenerator(string corpus, int order=2)
     {
-        var seed = Guid.NewGuid().ToString()[..8];
-        random = new DefaultRandom(new Random(seed.GetStableHashCode()));
         Order = order;
 
-        AnalyzeCorpus(path);
+        AnalyzeCorpus(corpus);
     }
 
-    public MarkovTextGenerator(string seed, string path, int order=2)
+    private void AnalyzeCorpus(string corpus)
     {
-        random = new DefaultRandom(new Random(seed.GetStableHashCode()));
-        Order = order;
-
-        AnalyzeCorpus(path);
-    }
-
-    public MarkovTextGenerator(IRandomNumberGenerator random, string path, int order=2)
-    {
-        this.random = random;
-        Order = order;
-
-        AnalyzeCorpus(path);
-    }
-
-    private void AnalyzeCorpus(string filePath)
-    {
-        var book = File.ReadAllText(filePath);
-        var sentences = SentenceDelimiterRegex().Split(book);
+        //var book = File.ReadAllText(filePath);
+        var sentences = SentenceDelimiterRegex().Split(corpus);
         foreach (var sentence in sentences)
         {
             AnalyzeSentence(sentence);
@@ -121,7 +86,15 @@ public partial class MarkovTextGenerator
         }
     }
 
-    public string GenerateMarkov()
+
+
+    public string GenerateMarkov() => GenerateMarkov(Guid.NewGuid().ToString()[..8]);
+
+    public string GenerateMarkov(string seed) => GenerateMarkov(new Random(seed.GetStableHashCode()));
+
+    public string GenerateMarkov(Random random) => GenerateMarkov(new DefaultRandom(random));
+
+    public string GenerateMarkov(IRandomNumberGenerator random)
     {
         var sb = stringBuilder.Value;
         sb!.Clear();

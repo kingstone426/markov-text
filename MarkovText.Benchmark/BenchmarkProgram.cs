@@ -13,12 +13,12 @@ public class BenchmarkProgram
     [GlobalSetup]
     public void Setup()
     {
-        Markov = new MarkovTextGenerator(Seed, MarkovTextGenerator.DefaultCorpusPath);
+        Markov = new MarkovTextGenerator(File.ReadAllText(MarkovTextGenerator.DefaultCorpusPath));
     }
 
     [Benchmark]
     public string BenchmarkArrayBasedMarkov()
     {
-        return Markov.GenerateMarkov();
+        return Markov.GenerateMarkov(Seed);
     }
 }

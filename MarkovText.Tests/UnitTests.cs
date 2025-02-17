@@ -2,6 +2,8 @@ namespace MarkovText.Tests;
 
 public class Tests
 {
+    private MarkovTextGenerator generator = null!;
+
     private class MockRandom : IRandomNumberGenerator
     {
         private readonly int value;
@@ -15,18 +17,24 @@ public class Tests
         }
     }
 
+    [SetUp]
+    public void Setup()
+    {
+        generator = new MarkovTextGenerator(File.ReadAllText(MarkovTextGenerator.DefaultCorpusPath));
+    }
+
     [Test, Description("Mocking random number generation with 0, 1 and 2 will produce the first three sentences of the corpus. " +
                        "This is because these sentences are written in all caps and have non-branching Markov chains.")]
     public void FirstSentencesTest()
     {
-        Assert.That(new MarkovTextGenerator(new MockRandom(0), MarkovTextGenerator.DefaultCorpusPath, 2).GenerateMarkov(), Is.EqualTo("THE CORSET AND THE CRINOLINE."));
-        Assert.That(new MarkovTextGenerator(new MockRandom(1), MarkovTextGenerator.DefaultCorpusPath, 2).GenerateMarkov(), Is.EqualTo("A BOOK OF MODES AND COSTUMES FROM REMOTE PERIODS TO THE PRESENT TIME."));
-        Assert.That(new MarkovTextGenerator(new MockRandom(2), MarkovTextGenerator.DefaultCorpusPath, 2).GenerateMarkov(), Is.EqualTo("WITH 54 FULL-PAGE AND OTHER ENGRAVINGS."));
+        Assert.That(generator.GenerateMarkov(new MockRandom(0)), Is.EqualTo("THE CORSET AND THE CRINOLINE."));
+        Assert.That(generator.GenerateMarkov(new MockRandom(1)), Is.EqualTo("A BOOK OF MODES AND COSTUMES FROM REMOTE PERIODS TO THE PRESENT TIME."));
+        Assert.That(generator.GenerateMarkov(new MockRandom(2)), Is.EqualTo("WITH 54 FULL-PAGE AND OTHER ENGRAVINGS."));
     }
 
     [Test, Description("Mocking random number generation with 173 produces a weird sentence that is created by pseudo-random jumps through the corpus.")]
     public void PseudoRandomSentenceTest()
     {
-        Assert.That(new MarkovTextGenerator(new MockRandom(173), MarkovTextGenerator.DefaultCorpusPath, 2).GenerateMarkov(), Is.EqualTo("We learn from the throat downwards by silver plates."));
+        Assert.That(generator.GenerateMarkov(new MockRandom(173)), Is.EqualTo("We learn from the throat downwards by silver plates."));
     }
 }

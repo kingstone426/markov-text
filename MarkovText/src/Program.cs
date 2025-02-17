@@ -8,10 +8,10 @@ Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(options =>
         options.Seed = Guid.NewGuid().ToString()[..8];
     }
 
-    var markov = new MarkovTextGenerator(options.Seed, options.Corpus, options.Order);
+    var markov = new MarkovTextGenerator(File.ReadAllText(options.Corpus), options.Order);
 
     Console.WriteLine();
-    Console.WriteLine(markov.GenerateMarkov());
+    Console.WriteLine(markov.GenerateMarkov(options.Seed));
     Console.WriteLine();
     Console.WriteLine();
     Console.WriteLine($"Seed: {options.Seed}");
