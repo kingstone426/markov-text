@@ -5,8 +5,6 @@ namespace MarkovText;
 
 public partial class MarkovTextGenerator
 {
-
-
     public const string DefaultCorpusPath = "Resources/thecorsetandthecrinoline.txt";
 
     private readonly List<string[]> StarterKeys = new();
@@ -36,7 +34,6 @@ public partial class MarkovTextGenerator
 
     private void AnalyzeCorpus(string corpus)
     {
-        //var book = File.ReadAllText(filePath);
         var sentences = SentenceDelimiterRegex().Split(corpus);
         foreach (var sentence in sentences)
         {
@@ -85,8 +82,6 @@ public partial class MarkovTextGenerator
             PrefixToSuffix.Add(key, wordToAdd);
         }
     }
-
-
 
     public string GenerateMarkov() => GenerateMarkov(Guid.NewGuid().ToString()[..8]);
 
