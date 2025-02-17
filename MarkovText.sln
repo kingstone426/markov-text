@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarkovText", "MarkovText\MarkovText.csproj", "{B57CD419-4C51-4617-83C8-28D1B8829F9B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarkovText.Benchmark", "MarkovText.Benchmark\MarkovText.Benchmark.csproj", "{091B6562-8439-40B2-B544-E2E209711E90}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarkovText.Tests", "MarkovText.Tests\MarkovText.Tests.csproj", "{E3B709CE-3E82-41F6-B1DE-068645C4E712}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B57CD419-4C51-4617-83C8-28D1B8829F9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B57CD419-4C51-4617-83C8-28D1B8829F9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B57CD419-4C51-4617-83C8-28D1B8829F9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B57CD419-4C51-4617-83C8-28D1B8829F9B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{091B6562-8439-40B2-B544-E2E209711E90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{091B6562-8439-40B2-B544-E2E209711E90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{091B6562-8439-40B2-B544-E2E209711E90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{091B6562-8439-40B2-B544-E2E209711E90}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E3B709CE-3E82-41F6-B1DE-068645C4E712}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3B709CE-3E82-41F6-B1DE-068645C4E712}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3B709CE-3E82-41F6-B1DE-068645C4E712}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3B709CE-3E82-41F6-B1DE-068645C4E712}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
