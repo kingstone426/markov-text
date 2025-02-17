@@ -2,7 +2,7 @@
 
 public static class ExtensionUtils
 {
-    public static void Add<T1, T2>(this Dictionary<T1, List<T2>> map, T1 key, T2 value) where T1 : notnull
+    public static void AddToList<T1, T2>(this Dictionary<T1, List<T2>> map, T1 key, T2 value) where T1 : notnull
     {
         if (!map.TryGetValue(key, out var list))
         {
