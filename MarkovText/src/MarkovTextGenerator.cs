@@ -8,6 +8,9 @@ namespace MarkovText;
 /// </summary>
 public partial class MarkovTextGenerator
 {
+    // Safety limit for longest sentence that can be generated, to prevent infinite loops
+    public int MaxWordCount = 1000;
+
     // Default file path for the corpus text
     public const string DefaultCorpusPath = "Resources/thecorsetandthecrinoline.txt";
 
@@ -73,6 +76,8 @@ public partial class MarkovTextGenerator
         var stringBuilder = threadLocalStringBuilder.Value;
         stringBuilder!.Clear();  // Clear the StringBuilder for reuse
 
+        var wordCount = 0;  // Track the current word count to prevent infinite loops
+
         // Choose a random starter key from the available starter keys
         var words = StarterKeys[random.Next(StarterKeys.Count)].ToArray();
         stringBuilder.Append(words[0]);  // Append the first word of the chosen starter key
@@ -80,6 +85,12 @@ public partial class MarkovTextGenerator
         // Continuously generate words based on the Markov chain
         while (true)
         {
+            // Safety check to prevent infinite loops
+            if (++wordCount >= MaxWordCount)
+            {
+                throw new SentenceOverflowException($"Word limit {wordCount} reached for sentence:\n{stringBuilder}");
+            }
+
             // Get the next word (suffix) based on the current key (prefix)
             var newWord = PrefixToSuffix[words].Random(random);
 

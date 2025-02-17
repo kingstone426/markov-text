@@ -19,6 +19,13 @@ public class Tests
         Assert.That(generator.GenerateMarkov(new MockRandom(173)), Is.EqualTo("We learn from the throat downwards by silver plates."));
     }
 
+    [Test, Description("Mocking random number generation with 0 will generate an infinite sentence 'The big dog was happy but the small dog was happy but the small dog was happy but...'")]
+    public void SentenceOverflowTest()
+    {
+        var generator = new MarkovTextGenerator("The big dog was happy but the small dog was very sad.");
+        Assert.Throws<SentenceOverflowException>(() => generator.GenerateMarkov(new MockRandom(0)));
+    }
+
     [Test, Description("Mocking random number generation with 1 so that the secondary alternative for 'dog was' gets selected, proceeding directly to 'very sad.'")]
     public void DeterministicTest()
     {
