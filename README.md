@@ -27,7 +27,7 @@ dotnet run
 
 #### Corpus
 
-You can specify any plaintext file as the corpus source for the generator:
+You can specify any plaintext file(s) as corpus source for the generator:
 
 ```
 dotnet run --corpus Resources/dubliners.txt
@@ -43,7 +43,7 @@ dotnet run --seed AnyTextStringCanGoHere
 
 #### Order
 
-By default, the generator looks at the last two words to determine the next word, but it can be configured to take longer word chains into considerations. Higher order Markov chains will generate more sensible - but less varied - sentences.
+By default, the generator looks at the last two words to determine the next word, but it can be configured to take longer word chains into consideration. Higher order Markov chains will generate more sensible - but less varied - sentences.
 
 You can specify the Markov chain order like this:
 

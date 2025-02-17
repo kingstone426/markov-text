@@ -8,7 +8,8 @@ Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(options =>
         options.Seed = Guid.NewGuid().ToString()[..8];
     }
 
-    var markov = new MarkovTextGenerator(File.ReadAllText(options.Corpus), options.Order);
+    var corpus = string.Join("\n", options.Corpus.Select(File.ReadAllText));
+    var markov = new MarkovTextGenerator(corpus, options.Order);
 
     Console.WriteLine();
     Console.WriteLine(markov.GenerateMarkov(options.Seed));
