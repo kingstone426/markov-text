@@ -6,7 +6,7 @@ namespace MarkovText;
 /// <summary>
 /// Class that generates text based on the Markov chain algorithm
 /// </summary>
-public partial class MarkovTextGenerator
+public partial class MarkovTextGenerator : IGenerator
 {
     // Safety limit for longest sentence that can be generated, to prevent infinite loops
     public int MaxWordCount = 1000;
@@ -21,19 +21,16 @@ public partial class MarkovTextGenerator
     private readonly Dictionary<string[], List<string>> PrefixToSuffix = new(new StringArrayEqualityComparer());
 
     // The order of the Markov chain (how many words in the "state" of the chain)
-    private readonly int Order;
+    private int Order;
 
     // Thread-local StringBuilder to avoid memory overhead from multiple threads
     private readonly ThreadLocal<StringBuilder> threadLocalStringBuilder = new(() => new StringBuilder());
-
-    // Sentence delimiters used to detect sentence boundaries
-    private static readonly char[] SentenceDelimiters = { '.', '?', '!' };
 
     // Regex patterns for sentence splitting, sanitization, and whitespace normalization
     [GeneratedRegex(@"(?<=[.!?])")]
     private static partial Regex SentenceDelimiterRegex();
 
-    [GeneratedRegex(@"\[.*\]|\""|\)|\(|\'|\n|\r|“|”|’|_")]
+    [GeneratedRegex(@"\[.+?\]|\""|\)|\(|\'|\n|\r|“|”|’|_")]
     private static partial Regex SanitizerRegex();
 
     [GeneratedRegex("\n")]
@@ -42,37 +39,25 @@ public partial class MarkovTextGenerator
     [GeneratedRegex(@"\s+")]
     private static partial Regex MultipleWhitespaceRegex();
 
-    /// <summary>
-    /// Constructor for the MarkovTextGenerator, takes a corpus and an optional order
-    /// </summary>
-    /// <param name="corpus">The text to analyze</param>
-    /// <param name="order">The number of preceding words that determine the next word</param>
-    public MarkovTextGenerator(string corpus, int order = 2)
+    public override string ToString() => "ArrayBasedMarkovTextGenerator";
+
+    public void BuildMarkovModel(string corpus, int order = 2)
     {
         Order = order;
+
+        StarterKeys.Clear();
+        PrefixToSuffix.Clear();
+
         AnalyzeCorpus(corpus);  // Analyze the provided corpus to build the Markov model
     }
 
-    /// <summary>
-    /// Generate a random Markov text using a default seed
-    /// </summary>
-    public string GenerateMarkov() => GenerateMarkov(Guid.NewGuid().ToString()[..8]);
-
-    /// <summary>
-    /// Generate a random Markov text using a custom seed (string)
-    /// </summary>
-    public string GenerateMarkov(string seed) => GenerateMarkov(new Random(seed.GetStableHashCode()));
-
-    /// <summary>
-    /// Generate a random Markov text using a custom Random object
-    /// </summary>
-    public string GenerateMarkov(Random random) => GenerateMarkov(new DefaultRandom(random));
-
-    /// <summary>
-    /// Generate a random Markov text using a custom random number generator interface
-    /// </summary>
-    public string GenerateMarkov(IRandomNumberGenerator random)
+    public string GenerateSentence(IRandomNumberGenerator random)
     {
+        if (StarterKeys.Count == 0)
+        {
+            throw new InvalidOperationException($"There is no Markov model. You need to call {nameof(BuildMarkovModel)} first.");
+        }
+
         var stringBuilder = threadLocalStringBuilder.Value;
         stringBuilder!.Clear();  // Clear the StringBuilder for reuse
 
@@ -83,7 +68,7 @@ public partial class MarkovTextGenerator
         stringBuilder.Append(words[0]);  // Append the first word of the chosen starter key
 
         // Continuously generate words based on the Markov chain
-        while (true)
+        while (PrefixToSuffix.TryGetValue(words, out var newPossibleWords))
         {
             // Safety check to prevent infinite loops
             if (++wordCount >= MaxWordCount)
@@ -92,7 +77,7 @@ public partial class MarkovTextGenerator
             }
 
             // Get the next word (suffix) based on the current key (prefix)
-            var newWord = PrefixToSuffix[words].Random(random);
+            var newWord = newPossibleWords.Random(random);
 
             // Shift the words in the key to make space for the new word
             for (var i = 0; i < Order - 1; i++)
@@ -101,20 +86,13 @@ public partial class MarkovTextGenerator
             }
             words[^1] = newWord;
 
-            // If the last word ends with a sentence delimiter, stop the generation
-            var lastCharOfLastWord = words[^1][^1];
-            if (SentenceDelimiters.Contains(lastCharOfLastWord))
-            {
-                break;
-            }
-
-            // Otherwise, append the next word to the generated text
+            // Append the next word to the generated text
             stringBuilder.Append(' ');
             stringBuilder.Append(words[0]);
         }
 
         // Append any remaining words to the result
-        for (var i = 0; i < Order; i++)
+        for (var i = 1; i < Order; i++)
         {
             stringBuilder.Append(' ');
             stringBuilder.Append(words[i]);
@@ -128,10 +106,24 @@ public partial class MarkovTextGenerator
     /// </summary>
     private void AnalyzeCorpus(string corpus)
     {
+        // Replace line endings (e.g., poem line breaks) with a space
+        corpus = FixLineEndingsRegex().Replace(corpus, " ");
+
+        // Remove unwanted characters like page numbers, quotes, parentheses, etc.
+        corpus = SanitizerRegex().Replace(corpus, "");
+
+        // Normalize multiple consecutive spaces into a single space
+        corpus = MultipleWhitespaceRegex().Replace(corpus, " ");
+
         var sentences = SentenceDelimiterRegex().Split(corpus); // Split corpus by sentence
         foreach (var sentence in sentences)
         {
             AnalyzeSentence(sentence);  // Analyze each sentence individually
+        }
+
+        if (StarterKeys.Count == 0)
+        {
+            throw new ArgumentException($"No phrases of order {Order} could be generated from the corpus: {corpus}");
         }
     }
 
@@ -145,20 +137,11 @@ public partial class MarkovTextGenerator
             return;  // Skip empty or whitespace-only sentences
         }
 
-        // Replace line endings (e.g., poem line breaks) with a space
-        sentence = FixLineEndingsRegex().Replace(sentence, " ");
-
-        // Remove unwanted characters like page numbers, quotes, parentheses, etc.
-        sentence = SanitizerRegex().Replace(sentence, "");
-
-        // Normalize multiple consecutive spaces into a single space
-        sentence = MultipleWhitespaceRegex().Replace(sentence, " ");
-
         // Split the sentence into words
         var words = sentence.Trim().Split(' ');
 
         // If there are not enough words to create a Markov chain of the specified order, skip
-        if (words.Length <= Order)
+        if (words.Length < Order)
         {
             return;
         }
@@ -172,6 +155,11 @@ public partial class MarkovTextGenerator
 
         // Add the initial key to the list of starter keys
         StarterKeys.Add(key.ToArray());
+
+        if (words.Length == Order)
+        {
+            return;
+        }
 
         // Map the key to the first possible word (suffix) that follows the key
         PrefixToSuffix.AddToList(key, words[Order].Trim());

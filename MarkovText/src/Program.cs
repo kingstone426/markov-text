@@ -9,10 +9,11 @@ Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(options =>
     }
 
     var corpus = string.Join("\n", options.Corpus.Select(File.ReadAllText));
-    var markov = new MarkovTextGenerator(corpus, options.Order);
+    IGenerator generator = new MarkovTextGenerator();
+    generator.BuildMarkovModel(corpus, options.Order);
 
     Console.WriteLine();
-    Console.WriteLine(markov.GenerateMarkov(options.Seed));
+    Console.WriteLine(generator.GenerateSentence(options.Seed));
     Console.WriteLine();
     Console.WriteLine();
     Console.WriteLine($"Seed: {options.Seed}");

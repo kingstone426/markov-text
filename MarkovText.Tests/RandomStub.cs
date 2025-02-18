@@ -1,9 +1,9 @@
 ﻿namespace MarkovText.Tests;
 
-public class MockRandom : IRandomNumberGenerator
+public class RandomStub : IRandomNumberGenerator
 {
     private readonly int value;
-    public MockRandom(int value)
+    public RandomStub(int value)
     {
         this.value = value;
     }

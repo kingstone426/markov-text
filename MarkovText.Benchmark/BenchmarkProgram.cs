@@ -8,17 +8,26 @@ public class BenchmarkProgram
 {
     private const string Seed = "f4e98e86"; // Using a constant seed for deterministic benchmarking
 
-    private MarkovTextGenerator Markov = null!;
+    [ParamsSource(nameof(Generators))]
+    // ReSharper disable once MemberCanBePrivate.Global
+    // ReSharper disable once FieldCanBeMadeReadOnly.Global
+    public IGenerator Generator = null!;
 
     [GlobalSetup]
     public void Setup()
     {
-        Markov = new MarkovTextGenerator(File.ReadAllText(MarkovTextGenerator.DefaultCorpusPath));
+        Generator.BuildMarkovModel(File.ReadAllText(MarkovTextGenerator.DefaultCorpusPath));
     }
 
     [Benchmark]
-    public string BenchmarkArrayBasedMarkov()
+    public string BenchmarkGenerator()
     {
-        return Markov.GenerateMarkov(Seed);
+        return Generator.GenerateSentence(Seed);
+    }
+
+    public static IEnumerable<IGenerator> Generators()
+    {
+        yield return new MarkovTextGenerator();
+        yield return new SpanBasedMarkovTextGenerator();
     }
 }
