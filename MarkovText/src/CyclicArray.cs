@@ -29,4 +29,16 @@ public class CyclicArray<T>
 
         return index % data.Length;
     }
+
+    public T[] CreateOffsetArray(int offset)
+    {
+        var ret = new T[data.Length];
+
+        for (var i = 0; i < data.Length; i++)
+        {
+            ret[i] = data[(i + offset) % data.Length];
+        }
+
+        return ret;
+    }
 }

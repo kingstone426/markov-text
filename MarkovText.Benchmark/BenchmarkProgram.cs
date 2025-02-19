@@ -6,7 +6,7 @@ namespace MarkovText.Benchmark;
 [MemoryDiagnoser]
 public class BenchmarkProgram
 {
-    private const string Seed = "f4e98e86"; // Using a constant seed for deterministic benchmarking
+    private const string Seed = "6a4156e2"; // Using a constant seed for deterministic benchmarking
 
     [ParamsSource(nameof(Generators))]
     // ReSharper disable once MemberCanBePrivate.Global

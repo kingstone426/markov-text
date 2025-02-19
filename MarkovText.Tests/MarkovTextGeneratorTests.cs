@@ -1,6 +1,6 @@
 namespace MarkovText.Tests;
 
-public class Tests
+public class MarkovTextGeneratorTests
 {
     [TestCaseSource(nameof(Generators))]
     [Description("By mocking the random number generation we can produce the first three sentences of the corpus.")]
@@ -102,6 +102,30 @@ public class Tests
         Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Word sentence."));
 
         Assert.Throws<ArgumentException>(() => generator.BuildMarkovModel(corpus, 3));
+    }
+
+    [TestCase("6a4b56d2")]
+    [TestCase("7189a168")]
+    [TestCase("1bf92c3c")]
+    [TestCase("91691121")]
+    [Description("Generator implementations produce same result from same seed with the corset corpus.")]
+    public void MatchTest(string seed)
+    {
+        var corpus = File.ReadAllText(MarkovTextGenerator.DefaultCorpusPath);
+
+        IGenerator generator1 = new MarkovTextGenerator();
+        IGenerator generator2 = new SpanBasedMarkovTextGenerator();
+
+        generator1.BuildMarkovModel(corpus);
+        generator2.BuildMarkovModel(corpus);
+
+        var sentence1 = generator1.GenerateSentence(seed);
+        var sentence2 = generator2.GenerateSentence(seed);
+
+        Console.WriteLine(sentence1);
+        Console.WriteLine(sentence2);
+
+        Assert.That(sentence1, Is.EqualTo(sentence2));
     }
 
     private static IEnumerable<IGenerator> Generators()

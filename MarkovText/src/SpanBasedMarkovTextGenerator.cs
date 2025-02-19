@@ -11,6 +11,8 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
     // Safety limit for longest sentence that can be generated, to prevent infinite loops
     public int MaxWordCount = 1000;
 
+    private readonly List<Range> SentenceStarters = new();
+
     // Maps prefix word sequences to suffix word sequences, e.g., "the big dog" => "big dog was"
     // Sequence ranges are expected to be the first occurrences in the corpus
     private readonly Dictionary<Range, List<Range>> StateTransitions = new();
@@ -50,12 +52,13 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
         Order = order;
 
         FirstOccurrenceLookup.Clear();
+        SentenceStarters.Clear();
         StateTransitions.Clear();
         FamousLastWords.Clear();
 
         AnalyzeCorpus(corpus);  // Analyze the provided corpus to build the Markov model
 
-        if (StateTransitions.Count == 0)
+        if (SentenceStarters.Count == 0)
         {
             throw new ArgumentException($"No phrases of order {Order} could be generated from the corpus: {corpus}");
         }
@@ -63,7 +66,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
 
     public string GenerateSentence(IRandomNumberGenerator random)
     {
-        if (StateTransitions.Count == 0)
+        if (SentenceStarters.Count == 0)
         {
             throw new InvalidOperationException($"There is no Markov model. You need to call {nameof(BuildMarkovModel)} first.");
         }
@@ -71,7 +74,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
         var stringBuilder = threadLocalStringBuilder.Value;
         stringBuilder!.Clear();  // Clear the StringBuilder for reuse
 
-        var state = StateTransitions[default].Random(random);
+        var state = SentenceStarters.Random(random);
         stringBuilder.Append(corpusMemory[state]);
         var wordCount = Order;
         while (StateTransitions.TryGetValue(state, out var possibleTransitions))
@@ -108,7 +111,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
         var corpus = corpusMemory.Span;
         var slidingWindow = new CyclicArray<Range>(Order);
         var wordCount = 0;
-        var previousRange = default(Range);
+        Range? previousRange = null;
 
         foreach (var word in corpus.Split(' '))
         {
@@ -135,7 +138,15 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
             var range = new Range(firstWord.Start, lastWord.End);
             range = GetFirstWordSequenceOccurrence(corpus, range);
 
-            StateTransitions.AddToList(previousRange, range);
+            if (previousRange == null)
+            {
+                SentenceStarters.Add(range);
+            }
+            else
+            {
+                StateTransitions.AddToList(previousRange.Value, range);
+            }
+
             FamousLastWords.TryAdd(range, lastWord);
             previousRange = range;
 
