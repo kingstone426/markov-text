@@ -6,7 +6,7 @@ namespace MarkovText;
 /// <summary>
 /// Class that generates text based on the Markov chain algorithm
 /// </summary>
-public partial class MarkovTextGenerator : IGenerator
+public partial class ArrayBasedMarkovTextGenerator : IGenerator
 {
     // Safety limit for longest sentence that can be generated, to prevent infinite loops
     public int MaxWordCount = 1000;
@@ -65,12 +65,9 @@ public partial class MarkovTextGenerator : IGenerator
 
         var stringBuilder = threadLocalStringBuilder.Value;
         stringBuilder!.Clear();  // Clear the StringBuilder for reuse
-
         var wordCount = Order;  // Track the current word count to prevent infinite loops
-
-        // Choose a random starter key from the available starter keys
-        var phrase = SentenceStarterPhrases.Random(random);
-        stringBuilder.Append(string.Join(' ', phrase));  // Append the starter phrase
+        var phrase = SentenceStarterPhrases.Random(random); // Choose a random starter key from the available starter keys
+        stringBuilder.Append(string.Join(' ', phrase));  // Write the entire sentence starter phrase
 
         // Continuously generate words based on the Markov chain
         while (PhraseTransitions.TryGetValue(phrase, out var possibleTransitions))
@@ -83,12 +80,11 @@ public partial class MarkovTextGenerator : IGenerator
             phrase = possibleTransitions.Random(random);
 
             stringBuilder.Append(' ');
-            stringBuilder.Append(phrase[^1]);   // Append the last word of the phrase to the generated text
+            stringBuilder.Append(phrase[^1]);   // Write the last word of the phrase to the generated text
         }
 
         return stringBuilder.ToString();  // Return the generated Markov text
     }
-
 
     private void AnalyzeCorpus(string corpus)
     {

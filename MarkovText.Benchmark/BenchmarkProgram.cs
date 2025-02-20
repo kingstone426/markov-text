@@ -16,7 +16,7 @@ public class BenchmarkProgram
     [GlobalSetup]
     public void Setup()
     {
-        Generator.BuildMarkovModel(File.ReadAllText(MarkovTextGenerator.DefaultCorpusPath));
+        Generator.BuildMarkovModel(File.ReadAllText(ArrayBasedMarkovTextGenerator.DefaultCorpusPath));
     }
 
     [Benchmark]
@@ -27,7 +27,7 @@ public class BenchmarkProgram
 
     public static IEnumerable<IGenerator> Generators()
     {
-        yield return new MarkovTextGenerator();
+        yield return new ArrayBasedMarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
     }
 }

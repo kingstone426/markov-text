@@ -22,10 +22,6 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
     // Phrases are expected to be the first occurrences in the corpus
     private readonly Dictionary<Range, List<Tuple<Range,Range>>> PhraseTransitions = new();
 
-    // Tracks the first occurrence of a phrase (substring) in the corpus
-    // Since ReadOnlySpan<char> cannot be used with Dictionaries, this uses a custom hashing solution
-    private readonly Dictionary<int, List<Range>> FirstOccurrenceLookup = new ();
-
     // The sanitized corpus
     private ReadOnlyMemory<char> Corpus;
 
@@ -50,7 +46,6 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
     {
         Order = order;
 
-        FirstOccurrenceLookup.Clear();
         SentenceStarterPhrases.Clear();
         PhraseTransitions.Clear();
 
@@ -71,13 +66,9 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
 
         var stringBuilder = threadLocalStringBuilder.Value;
         stringBuilder!.Clear();  // Clear the StringBuilder for reuse
-
-
         var wordCount = Order;  // Track the current word count to prevent infinite loops
-
-        // Choose a random starter key from the available starter keys
-        var phrase = SentenceStarterPhrases.Random(random);
-        stringBuilder.Append(Corpus[phrase]);
+        var phrase = SentenceStarterPhrases.Random(random); // Choose a random starter key from the available starter keys
+        stringBuilder.Append(Corpus[phrase]);   // Write the entire sentence starter phrase
 
         // Continuously generate words based on the Markov chain
         while (PhraseTransitions.TryGetValue(phrase, out var possibleTransitions))
@@ -90,7 +81,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
             (phrase, var lastWordInPhrase) = possibleTransitions.Random(random);
 
             stringBuilder.Append(' ');
-            stringBuilder.Append(Corpus[lastWordInPhrase]); // Append the last word of the phrase
+            stringBuilder.Append(Corpus[lastWordInPhrase]); // Write the last word of the phrase
         }
 
         return stringBuilder.ToString();    // Return the generated Markov text
@@ -111,6 +102,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
         Corpus = corpus.AsMemory();
 
         var corpusSpan = Corpus.Span;
+        var firstOccurrenceLookup = new Dictionary<string, Range>(); // Tracks the first occurrence of a phrase in the corpus
         var slidingWindow = new CyclicArray<Range>(Order);
         var wordCount = 0;
         Range? previousRange = null;
@@ -137,48 +129,34 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
 
             var firstWord = slidingWindow[wordCount];
             var lastWord = slidingWindow[wordCount - 1];
-            var range = new Range(firstWord.Start, lastWord.End);
-            range = GetFirstWordSequenceOccurrence(corpusSpan, range);
+            var phrase = new Range(firstWord.Start, lastWord.End);
+            var phraseString = corpusSpan[phrase].ToString();
 
-            if (previousRange == null)
+            if (!firstOccurrenceLookup.TryGetValue(phraseString, out var firstPhrase))
             {
-                SentenceStarterPhrases.Add(range);
+                firstOccurrenceLookup.Add(phraseString, phrase);
             }
             else
             {
-                PhraseTransitions.AddToList(previousRange.Value, new Tuple<Range, Range>(range, lastWord));
+                phrase = firstPhrase;
             }
 
-            previousRange = range;
+            if (previousRange == null)
+            {
+                SentenceStarterPhrases.Add(phrase);
+            }
+            else
+            {
+                PhraseTransitions.AddToList(previousRange.Value, new Tuple<Range, Range>(phrase, lastWord));
+            }
 
-            if (SentenceDelimiters.Contains(corpusSpan[range.End.Value-1]))
+            previousRange = phrase;
+
+            if (SentenceDelimiters.Contains(corpusSpan[phrase.End.Value-1]))
             {
                 previousRange = default;
                 wordCount = 0;
             }
         }
-    }
-
-    private Range GetFirstWordSequenceOccurrence(ReadOnlySpan<char> span, Range newRange)
-    {
-        var hash = span[newRange].GetStableHashCode();
-
-        if (!FirstOccurrenceLookup.TryGetValue(hash, out var list))
-        {
-            FirstOccurrenceLookup.Add(hash, new List<Range> { newRange });
-            return newRange;
-        }
-
-        foreach (var existingRange in list)
-        {
-            if (span[existingRange].Equals(span[newRange], StringComparison.Ordinal))
-            {
-                return existingRange;
-            }
-        }
-
-        list.Add(newRange);
-
-        return newRange;
     }
 }

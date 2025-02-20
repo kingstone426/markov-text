@@ -41,7 +41,7 @@ public class MarkovTextGenerator
     [Description("Creates a pseudo-random sentence from the Corset and Crinoline book.")]
     public void Corset_and_crinoline_sentence(IGenerator generator)
     {
-        var corpus = File.ReadAllText(MarkovText.MarkovTextGenerator.DefaultCorpusPath);
+        var corpus = File.ReadAllText(MarkovText.ArrayBasedMarkovTextGenerator.DefaultCorpusPath);
 
         generator.BuildMarkovModel(corpus);
 
@@ -111,9 +111,9 @@ public class MarkovTextGenerator
     [Description("All generator implementations produce same sentence given the same seed.")]
     public void MatchTest(string seed)
     {
-        var corpus = File.ReadAllText(MarkovText.MarkovTextGenerator.DefaultCorpusPath);
+        var corpus = File.ReadAllText(MarkovText.ArrayBasedMarkovTextGenerator.DefaultCorpusPath);
 
-        IGenerator generator1 = new MarkovText.MarkovTextGenerator();
+        IGenerator generator1 = new MarkovText.ArrayBasedMarkovTextGenerator();
         IGenerator generator2 = new SpanBasedMarkovTextGenerator();
 
         generator1.BuildMarkovModel(corpus);
@@ -130,7 +130,7 @@ public class MarkovTextGenerator
 
     private static IEnumerable<IGenerator> Generators()
     {
-        yield return new MarkovText.MarkovTextGenerator();
+        yield return new MarkovText.ArrayBasedMarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
     }
 }
