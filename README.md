@@ -1,6 +1,6 @@
 ﻿# Markov Text Generator
 
-This is a Markov chain text generator implemented in .NET 8.0. It was inspired by a [talk by Jason Grinblat](https://youtu.be/3AjlsTtrfVY) of Freehold Games.
+This is a Markov chain text generator implemented in .NET 9.0. It was inspired by a [talk by Jason Grinblat](https://youtu.be/3AjlsTtrfVY) of Freehold Games.
 
 The program generates garbled and confusing sentences given a piece of text (a "corpus"). The algorithm selects the next word of the sentence based on the previous words in a pseudo-random manner.
 

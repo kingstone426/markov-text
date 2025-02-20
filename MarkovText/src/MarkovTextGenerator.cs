@@ -11,15 +11,17 @@ public partial class MarkovTextGenerator : IGenerator
     // Safety limit for longest sentence that can be generated, to prevent infinite loops
     public int MaxWordCount = 1000;
 
+    // The order of the Markov chain (how many words in the "state" of the chain)
+    private int Order;
+
     // Default file path for the corpus text
     public const string DefaultCorpusPath = "Resources/thecorsetandthecrinoline.txt";
 
-    private readonly List<string[]> SentenceStarters = new();
+    // Phrases at the start of sentences are the initial states of the Markov chain
+    private readonly List<string[]> SentenceStarterPhrases = new();
 
-    private readonly Dictionary<string[], List<string[]>> StateTransitions = new(new StringArrayEqualityComparer());
-
-    // The order of the Markov chain (how many words in the "state" of the chain)
-    private int Order;
+    // Maps prefix word phrases to suffix phrases, e.g., "the big dog" => "big dog was"
+    private readonly Dictionary<string[], List<string[]>> PhraseTransitions = new(new StringArrayEqualityComparer());
 
     // Thread-local StringBuilder to avoid memory overhead from multiple threads
     private readonly ThreadLocal<StringBuilder> threadLocalStringBuilder = new(() => new StringBuilder());
@@ -43,12 +45,12 @@ public partial class MarkovTextGenerator : IGenerator
     {
         Order = order;
 
-        SentenceStarters.Clear();
-        StateTransitions.Clear();
+        SentenceStarterPhrases.Clear();
+        PhraseTransitions.Clear();
 
-        AnalyzeCorpus(corpus);  // Analyze the provided corpus to build the Markov model
+        AnalyzeCorpus(corpus);  // Analyze the corpus and build the Markov model
 
-        if (SentenceStarters.Count == 0)
+        if (SentenceStarterPhrases.Count == 0)
         {
             throw new ArgumentException($"No phrases of order {Order} could be generated from the corpus: {corpus}");
         }
@@ -56,7 +58,7 @@ public partial class MarkovTextGenerator : IGenerator
 
     public string GenerateSentence(IRandomNumberGenerator random)
     {
-        if (SentenceStarters.Count == 0)
+        if (SentenceStarterPhrases.Count == 0)
         {
             throw new InvalidOperationException($"There is no Markov model. You need to call {nameof(BuildMarkovModel)} first.");
         }
@@ -67,23 +69,21 @@ public partial class MarkovTextGenerator : IGenerator
         var wordCount = Order;  // Track the current word count to prevent infinite loops
 
         // Choose a random starter key from the available starter keys
-        var phrase = SentenceStarters.Random(random);//[random.Next(StarterKeys.Count)].ToArray();
+        var phrase = SentenceStarterPhrases.Random(random);
         stringBuilder.Append(string.Join(' ', phrase));  // Append the starter phrase
 
         // Continuously generate words based on the Markov chain
-        while (StateTransitions.TryGetValue(phrase, out var possibleTransitions))
+        while (PhraseTransitions.TryGetValue(phrase, out var possibleTransitions))
         {
-            // Safety check to prevent infinite loops
-            if (++wordCount >= MaxWordCount)
+            if (++wordCount >= MaxWordCount)    // Safety check to prevent infinite loops
             {
                 throw new SentenceOverflowException($"Word limit {wordCount} reached for sentence:\n{stringBuilder}");
             }
 
             phrase = possibleTransitions.Random(random);
 
-            // Append the next word to the generated text
             stringBuilder.Append(' ');
-            stringBuilder.Append(phrase[^1]);
+            stringBuilder.Append(phrase[^1]);   // Append the next word to the generated text
         }
 
         return stringBuilder.ToString();  // Return the generated Markov text
@@ -105,7 +105,7 @@ public partial class MarkovTextGenerator : IGenerator
         var slidingWindow = new CyclicArray<string>(Order);
         string[]? previousPhrase = null;
 
-        foreach (var word in corpus.Trim().Split(' '))    // Split the sentence into words
+        foreach (var word in corpus.Trim().Split(' '))  // Split the corpus into words
         {
             if (string.IsNullOrWhiteSpace(word))
             {
@@ -129,11 +129,11 @@ public partial class MarkovTextGenerator : IGenerator
 
             if (previousPhrase == null)
             {
-                SentenceStarters.Add(phrase);
+                SentenceStarterPhrases.Add(phrase);
             }
             else
             {
-                StateTransitions.AddToList(previousPhrase, phrase);
+                PhraseTransitions.AddToList(previousPhrase, phrase);
             }
 
             previousPhrase = phrase;

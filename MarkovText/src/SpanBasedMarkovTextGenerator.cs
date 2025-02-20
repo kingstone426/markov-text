@@ -11,24 +11,25 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
     // Safety limit for longest sentence that can be generated, to prevent infinite loops
     public int MaxWordCount = 1000;
 
-    private readonly List<Range> SentenceStarters = new();
+    // The order of the Markov chain (how many words in the "state" of the chain)
+    private int Order;
 
-    // Maps prefix word sequences to suffix word sequences, e.g., "the big dog" => "big dog was"
-    // Sequence ranges are expected to be the first occurrences in the corpus
-    private readonly Dictionary<Range, List<Range>> StateTransitions = new();
+    // Phrases at the start of sentences are the initial states of the Markov chain
+    private readonly List<Range> SentenceStarterPhrases = new();
 
-    // Maps word sequences to the last word in the sequence, e.g., "the big dog" => "dog"
+    // Maps prefix word phrases to suffix phrases, e.g., "the big dog" => "big dog was"
+    // Phrases are expected to be the first occurrences in the corpus
+    private readonly Dictionary<Range, List<Range>> PhraseTransitions = new();
+
+    // Maps phrases to the last word in the phrase, e.g., "the big dog" => "dog"
     private readonly Dictionary<Range, Range> FamousLastWords = new();
 
-    // Tracks the first occurrence of a word sequence (substring) in the corpusAsText
+    // Tracks the first occurrence of a phrase (substring) in the corpus
     // Since ReadOnlySpan<char> cannot be used with Dictionaries, this uses a custom hashing solution
     private readonly Dictionary<int, List<Range>> FirstOccurrenceLookup = new ();
 
     // The sanitized corpus
-    private ReadOnlyMemory<char> corpusMemory;
-
-    // The order of the Markov chain (how many words in the "state" of the chain)
-    private int Order;
+    private ReadOnlyMemory<char> Corpus;
 
     // Sentence delimiters used to detect sentence boundaries
     private static readonly char[] SentenceDelimiters = { '.', '?', '!' };
@@ -52,13 +53,13 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
         Order = order;
 
         FirstOccurrenceLookup.Clear();
-        SentenceStarters.Clear();
-        StateTransitions.Clear();
+        SentenceStarterPhrases.Clear();
+        PhraseTransitions.Clear();
         FamousLastWords.Clear();
 
-        AnalyzeCorpus(corpus);  // Analyze the provided corpus to build the Markov model
+        AnalyzeCorpus(corpus);  // Analyze the corpus and build the Markov model
 
-        if (SentenceStarters.Count == 0)
+        if (SentenceStarterPhrases.Count == 0)
         {
             throw new ArgumentException($"No phrases of order {Order} could be generated from the corpus: {corpus}");
         }
@@ -66,7 +67,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
 
     public string GenerateSentence(IRandomNumberGenerator random)
     {
-        if (SentenceStarters.Count == 0)
+        if (SentenceStarterPhrases.Count == 0)
         {
             throw new InvalidOperationException($"There is no Markov model. You need to call {nameof(BuildMarkovModel)} first.");
         }
@@ -74,48 +75,52 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
         var stringBuilder = threadLocalStringBuilder.Value;
         stringBuilder!.Clear();  // Clear the StringBuilder for reuse
 
-        var state = SentenceStarters.Random(random);
-        stringBuilder.Append(corpusMemory[state]);
-        var wordCount = Order;
-        while (StateTransitions.TryGetValue(state, out var possibleTransitions))
+
+        var wordCount = Order;  // Track the current word count to prevent infinite loops
+
+        // Choose a random starter key from the available starter keys
+        var phrase = SentenceStarterPhrases.Random(random);
+        stringBuilder.Append(Corpus[phrase]);
+
+        // Continuously generate words based on the Markov chain
+        while (PhraseTransitions.TryGetValue(phrase, out var possibleTransitions))
         {
-            if (++wordCount >= MaxWordCount)    // Prevents infinite loops
+            if (++wordCount >= MaxWordCount)    // Safety check to prevent infinite loops
             {
                 throw new SentenceOverflowException($"Word limit {wordCount} reached for sentence:\n{stringBuilder}");
             }
 
-            var nextState = possibleTransitions.Random(random);
-            var nextWord = corpusMemory[FamousLastWords[nextState]];
+            phrase = possibleTransitions.Random(random);
+            var nextWord = Corpus[FamousLastWords[phrase]];
             stringBuilder.Append(' ');
-            stringBuilder.Append(nextWord);
-
-            state = nextState;
+            stringBuilder.Append(nextWord); // Append the next word to the generated text
         }
 
-        return stringBuilder.ToString();
+        return stringBuilder.ToString();    // Return the generated Markov text
     }
 
-    private void AnalyzeCorpus(string corpusString)
+    private void AnalyzeCorpus(string corpus)
     {
         // Replace line endings (e.g., poem line breaks) with a space
-        corpusString = FixLineEndingsRegex().Replace(corpusString, " ");
+        corpus = FixLineEndingsRegex().Replace(corpus, " ");
 
         // Remove unwanted characters like page numbers, quotes, parentheses, etc.
-        corpusString = SanitizerRegex().Replace(corpusString, "");
+        corpus = SanitizerRegex().Replace(corpus, "");
 
         // Normalize multiple consecutive spaces into a single space
-        corpusString = MultipleWhitespaceRegex().Replace(corpusString, " ");
+        corpus = MultipleWhitespaceRegex().Replace(corpus, " ");
 
-        corpusMemory = corpusString.AsMemory();
+        // Store the sanitized corpus
+        Corpus = corpus.AsMemory();
 
-        var corpus = corpusMemory.Span;
+        var corpusSpan = Corpus.Span;
         var slidingWindow = new CyclicArray<Range>(Order);
         var wordCount = 0;
         Range? previousRange = null;
 
-        foreach (var word in corpus.Split(' '))
+        foreach (var word in corpusSpan.Split(' ')) // Split the corpus into words
         {
-            if (corpus[word].IsWhiteSpace())
+            if (corpusSpan[word].IsWhiteSpace())
             {
                 continue;
             }
@@ -124,7 +129,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
 
             if (++wordCount < Order)
             {
-                if (SentenceDelimiters.Contains(corpus[word.End.Value-1]))
+                if (SentenceDelimiters.Contains(corpusSpan[word.End.Value-1]))
                 {
                     previousRange = default;
                     wordCount = 0;
@@ -136,21 +141,21 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
             var firstWord = slidingWindow[wordCount];
             var lastWord = slidingWindow[wordCount - 1];
             var range = new Range(firstWord.Start, lastWord.End);
-            range = GetFirstWordSequenceOccurrence(corpus, range);
+            range = GetFirstWordSequenceOccurrence(corpusSpan, range);
 
             if (previousRange == null)
             {
-                SentenceStarters.Add(range);
+                SentenceStarterPhrases.Add(range);
             }
             else
             {
-                StateTransitions.AddToList(previousRange.Value, range);
+                PhraseTransitions.AddToList(previousRange.Value, range);
             }
 
             FamousLastWords.TryAdd(range, lastWord);
             previousRange = range;
 
-            if (SentenceDelimiters.Contains(corpus[range.End.Value-1]))
+            if (SentenceDelimiters.Contains(corpusSpan[range.End.Value-1]))
             {
                 previousRange = default;
                 wordCount = 0;

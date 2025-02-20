@@ -1,9 +1,9 @@
 namespace MarkovText.Tests;
 
-public class MarkovTextGeneratorTests
+public class MarkovTextGenerator
 {
     [TestCaseSource(nameof(Generators))]
-    [Description("By mocking the random number generation we can produce the first three sentences of the corpus.")]
+    [Description("Generates the first three sentences of the corpus.")]
     public void First_three_sentences(IGenerator generator)
     {
         const string corpus = "The first sentence. The second sentence. The third sentence.";
@@ -16,7 +16,7 @@ public class MarkovTextGeneratorTests
     }
 
     [TestCaseSource(nameof(Generators))]
-    [Description("Mocking random number generation with 1 so that the second alternative for 'dog was' gets selected, proceeding directly to 'very sad.'")]
+    [Description("Selects the second transition alternative 'dog was' -> 'very sad.' ")]
     public void Branching_sentence(IGenerator generator)
     {
         const string corpus = "The big dog was happy but the small dog was very sad.";
@@ -27,7 +27,7 @@ public class MarkovTextGeneratorTests
     }
 
     [TestCaseSource(nameof(Generators))]
-    [Description("Mocking random number generation with 0 will generate an infinite sentence 'The big dog was happy but the small dog was happy but the small dog was happy but...'")]
+    [Description("Generates an infinite sentence 'The big dog was happy but the small dog was happy but the small dog was happy but...'")]
     public void Infinitely_branching_sentence(IGenerator generator)
     {
         const string corpus = "The big dog was happy but the small dog was very sad.";
@@ -38,10 +38,10 @@ public class MarkovTextGeneratorTests
     }
 
     [TestCaseSource(nameof(Generators))]
-    [Description("Created a pseudo-random sentence from the Corset and Crinoline book.")]
+    [Description("Creates a pseudo-random sentence from the Corset and Crinoline book.")]
     public void Corset_and_crinoline_sentence(IGenerator generator)
     {
-        var corpus = File.ReadAllText(MarkovTextGenerator.DefaultCorpusPath);
+        var corpus = File.ReadAllText(MarkovText.MarkovTextGenerator.DefaultCorpusPath);
 
         generator.BuildMarkovModel(corpus);
 
@@ -108,12 +108,12 @@ public class MarkovTextGeneratorTests
     [TestCase("7189a168")]
     [TestCase("1bf92c3c")]
     [TestCase("91691121")]
-    [Description("Generator implementations produce same result from same seed with the corset corpus.")]
+    [Description("All generator implementations produce same sentence given the same seed.")]
     public void MatchTest(string seed)
     {
-        var corpus = File.ReadAllText(MarkovTextGenerator.DefaultCorpusPath);
+        var corpus = File.ReadAllText(MarkovText.MarkovTextGenerator.DefaultCorpusPath);
 
-        IGenerator generator1 = new MarkovTextGenerator();
+        IGenerator generator1 = new MarkovText.MarkovTextGenerator();
         IGenerator generator2 = new SpanBasedMarkovTextGenerator();
 
         generator1.BuildMarkovModel(corpus);
@@ -130,7 +130,7 @@ public class MarkovTextGeneratorTests
 
     private static IEnumerable<IGenerator> Generators()
     {
-        yield return new MarkovTextGenerator();
+        yield return new MarkovText.MarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
     }
 }
