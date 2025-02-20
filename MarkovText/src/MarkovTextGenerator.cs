@@ -83,7 +83,7 @@ public partial class MarkovTextGenerator : IGenerator
             phrase = possibleTransitions.Random(random);
 
             stringBuilder.Append(' ');
-            stringBuilder.Append(phrase[^1]);   // Append the next word to the generated text
+            stringBuilder.Append(phrase[^1]);   // Append the last word of the phrase to the generated text
         }
 
         return stringBuilder.ToString();  // Return the generated Markov text

@@ -18,11 +18,9 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
     private readonly List<Range> SentenceStarterPhrases = new();
 
     // Maps prefix word phrases to suffix phrases, e.g., "the big dog" => "big dog was"
+    // Tuple also holds the last word of the suffix phrase, e.g., "was"
     // Phrases are expected to be the first occurrences in the corpus
-    private readonly Dictionary<Range, List<Range>> PhraseTransitions = new();
-
-    // Maps phrases to the last word in the phrase, e.g., "the big dog" => "dog"
-    private readonly Dictionary<Range, Range> FamousLastWords = new();
+    private readonly Dictionary<Range, List<Tuple<Range,Range>>> PhraseTransitions = new();
 
     // Tracks the first occurrence of a phrase (substring) in the corpus
     // Since ReadOnlySpan<char> cannot be used with Dictionaries, this uses a custom hashing solution
@@ -55,7 +53,6 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
         FirstOccurrenceLookup.Clear();
         SentenceStarterPhrases.Clear();
         PhraseTransitions.Clear();
-        FamousLastWords.Clear();
 
         AnalyzeCorpus(corpus);  // Analyze the corpus and build the Markov model
 
@@ -90,10 +87,10 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
                 throw new SentenceOverflowException($"Word limit {wordCount} reached for sentence:\n{stringBuilder}");
             }
 
-            phrase = possibleTransitions.Random(random);
-            var nextWord = Corpus[FamousLastWords[phrase]];
+            (phrase, var lastWordInPhrase) = possibleTransitions.Random(random);
+
             stringBuilder.Append(' ');
-            stringBuilder.Append(nextWord); // Append the next word to the generated text
+            stringBuilder.Append(Corpus[lastWordInPhrase]); // Append the last word of the phrase
         }
 
         return stringBuilder.ToString();    // Return the generated Markov text
@@ -149,10 +146,9 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
             }
             else
             {
-                PhraseTransitions.AddToList(previousRange.Value, range);
+                PhraseTransitions.AddToList(previousRange.Value, new Tuple<Range, Range>(range, lastWord));
             }
 
-            FamousLastWords.TryAdd(range, lastWord);
             previousRange = range;
 
             if (SentenceDelimiters.Contains(corpusSpan[range.End.Value-1]))
