@@ -27,6 +27,7 @@ public class BenchmarkProgram
 
     public static IEnumerable<IGenerator> Generators()
     {
+        yield return new StringBasedMarkovTextGenerator();
         yield return new ArrayBasedMarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
     }

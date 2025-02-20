@@ -132,6 +132,7 @@ public class MarkovTextGenerator
 
     private static IEnumerable<IGenerator> Generators()
     {
+        yield return new StringBasedMarkovTextGenerator();
         yield return new ArrayBasedMarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
     }
