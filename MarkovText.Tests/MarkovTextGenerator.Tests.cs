@@ -1,3 +1,5 @@
+using Shouldly;
+
 namespace MarkovText.Tests;
 
 public class MarkovTextGenerator
@@ -10,9 +12,9 @@ public class MarkovTextGenerator
 
         generator.BuildMarkovModel(corpus);
 
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("The first sentence."));
-        Assert.That(generator.GenerateSentence(new RandomStub(1)), Is.EqualTo("The second sentence."));
-        Assert.That(generator.GenerateSentence(new RandomStub(2)), Is.EqualTo("The third sentence."));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("The first sentence.");
+        generator.GenerateSentence(new RandomStub(1)).ShouldBe("The second sentence.");
+        generator.GenerateSentence(new RandomStub(2)).ShouldBe("The third sentence.");
     }
 
     [TestCaseSource(nameof(Generators))]
@@ -23,7 +25,7 @@ public class MarkovTextGenerator
 
         generator.BuildMarkovModel(corpus);
 
-        Assert.That(generator.GenerateSentence(new RandomStub(1)), Is.EqualTo("The big dog was very sad."));
+        generator.GenerateSentence(new RandomStub(1)).ShouldBe("The big dog was very sad.");
     }
 
     [TestCaseSource(nameof(Generators))]
@@ -34,7 +36,7 @@ public class MarkovTextGenerator
 
         generator.BuildMarkovModel(corpus);
 
-        Assert.Throws<SentenceOverflowException>(() => generator.GenerateSentence(new RandomStub(0)));
+        Should.Throw<SentenceOverflowException>(() => generator.GenerateSentence(new RandomStub(0)));
     }
 
     [TestCaseSource(nameof(Generators))]
@@ -45,7 +47,7 @@ public class MarkovTextGenerator
 
         generator.BuildMarkovModel(corpus);
 
-        Assert.That(generator.GenerateSentence(new RandomStub(73)), Is.EqualTo("These plates are deficient in width and insufficient in stiffness the corset were true, not a good deal discussed in my opinion there is a plate representing a lady faint at a royal fête."));
+        generator.GenerateSentence(new RandomStub(73)).ShouldBe("These plates are deficient in width and insufficient in stiffness the corset were true, not a good deal discussed in my opinion there is a plate representing a lady faint at a royal fête.");
     }
 
     [TestCaseSource(nameof(Generators))]
@@ -53,12 +55,12 @@ public class MarkovTextGenerator
     {
         const string corpus = "Word.";
 
-        generator.BuildMarkovModel(corpus, 1);
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Word."));
+        Should.NotThrow(() => generator.BuildMarkovModel(corpus, 1));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("Word.");
 
-        Assert.Throws<ArgumentException>(() => generator.BuildMarkovModel(corpus, 2));
+        Should.Throw<ArgumentException>(() => generator.BuildMarkovModel(corpus, 2));
 
-        Assert.Throws<ArgumentException>(() => generator.BuildMarkovModel(corpus, 3));
+        Should.Throw<ArgumentException>(() => generator.BuildMarkovModel(corpus, 3));
     }
 
     [TestCaseSource(nameof(Generators))]
@@ -66,13 +68,13 @@ public class MarkovTextGenerator
     {
         const string corpus = "Two words.";
 
-        generator.BuildMarkovModel(corpus, 1);
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Two words."));
+        Should.NotThrow(() => generator.BuildMarkovModel(corpus, 1));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("Two words.");
 
-        generator.BuildMarkovModel(corpus, 2);
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Two words."));
+        Should.NotThrow(() => generator.BuildMarkovModel(corpus, 2));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("Two words.");
 
-        Assert.Throws<ArgumentException>(() => generator.BuildMarkovModel(corpus, 3));
+        Should.Throw<ArgumentException>(() => generator.BuildMarkovModel(corpus, 3));
     }
 
     [TestCaseSource(nameof(Generators))]
@@ -80,14 +82,14 @@ public class MarkovTextGenerator
     {
         const string corpus = "Three word sentence.";
 
-        generator.BuildMarkovModel(corpus, 1);
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Three word sentence."));
+        Should.NotThrow(() => generator.BuildMarkovModel(corpus, 1));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("Three word sentence.");
 
-        generator.BuildMarkovModel(corpus, 2);
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Three word sentence."));
+        Should.NotThrow(() => generator.BuildMarkovModel(corpus, 2));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("Three word sentence.");
 
-        generator.BuildMarkovModel(corpus, 3);
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Three word sentence."));
+        Should.NotThrow(() => generator.BuildMarkovModel(corpus, 3));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("Three word sentence.");
     }
 
     [TestCaseSource(nameof(Generators))]
@@ -95,13 +97,13 @@ public class MarkovTextGenerator
     {
         const string corpus = "Skip. Word sentence.";
 
-        generator.BuildMarkovModel(corpus, 1);
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Skip."));
+        Should.NotThrow(() => generator.BuildMarkovModel(corpus, 1));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("Skip.");
 
-        generator.BuildMarkovModel(corpus, 2);
-        Assert.That(generator.GenerateSentence(new RandomStub(0)), Is.EqualTo("Word sentence."));
+        Should.NotThrow(() => generator.BuildMarkovModel(corpus, 2));
+        generator.GenerateSentence(new RandomStub(0)).ShouldBe("Word sentence.");
 
-        Assert.Throws<ArgumentException>(() => generator.BuildMarkovModel(corpus, 3));
+        Should.Throw<ArgumentException>(() => generator.BuildMarkovModel(corpus, 3));
     }
 
     [TestCase("6a4b56d2")]
@@ -111,9 +113,9 @@ public class MarkovTextGenerator
     [Description("All generator implementations produce same sentence given the same seed.")]
     public void MatchTest(string seed)
     {
-        var corpus = File.ReadAllText(MarkovText.ArrayBasedMarkovTextGenerator.DefaultCorpusPath);
+        var corpus = File.ReadAllText(ArrayBasedMarkovTextGenerator.DefaultCorpusPath);
 
-        IGenerator generator1 = new MarkovText.ArrayBasedMarkovTextGenerator();
+        IGenerator generator1 = new ArrayBasedMarkovTextGenerator();
         IGenerator generator2 = new SpanBasedMarkovTextGenerator();
 
         generator1.BuildMarkovModel(corpus);
@@ -125,12 +127,12 @@ public class MarkovTextGenerator
         Console.WriteLine(sentence1);
         Console.WriteLine(sentence2);
 
-        Assert.That(sentence1, Is.EqualTo(sentence2));
+        sentence1.ShouldBe(sentence2);
     }
 
     private static IEnumerable<IGenerator> Generators()
     {
-        yield return new MarkovText.ArrayBasedMarkovTextGenerator();
+        yield return new ArrayBasedMarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
     }
 }
