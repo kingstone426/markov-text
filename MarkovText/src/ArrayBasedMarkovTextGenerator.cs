@@ -39,7 +39,7 @@ public partial class ArrayBasedMarkovTextGenerator : IGenerator
     [GeneratedRegex(@"\s+")]
     private static partial Regex MultipleWhitespaceRegex();
 
-    public override string ToString() => "ArrayBasedMarkovTextGenerator";
+    public override string ToString() => "Array";
 
     public void BuildMarkovModel(string corpus, int order = 2)
     {
@@ -67,7 +67,16 @@ public partial class ArrayBasedMarkovTextGenerator : IGenerator
         stringBuilder!.Clear();  // Clear the StringBuilder for reuse
         var wordCount = Order;  // Track the current word count to prevent infinite loops
         var phrase = SentenceStarterPhrases.Random(random); // Choose a random starter key from the available starter keys
-        stringBuilder.Append(string.Join(' ', phrase));  // Write the entire sentence starter phrase
+
+        // Write the entire sentence starter phrase (avoids string.Join that allocates)
+        for (var i=0;i<phrase.Length; i++)
+        {
+            if (i>0)
+            {
+                stringBuilder.Append(' ');
+            }
+            stringBuilder.Append(phrase[i]);
+        }
 
         // Continuously generate words based on the Markov chain
         while (PhraseTransitions.TryGetValue(phrase, out var possibleTransitions))

@@ -9,7 +9,7 @@ Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(options =>
     }
 
     var corpus = string.Join("\n", options.Corpus.Select(File.ReadAllText));
-    IGenerator generator = new ArrayBasedMarkovTextGenerator();
+    IGenerator generator = new StringBasedMarkovTextGenerator();
     generator.BuildMarkovModel(corpus, options.Order);
 
     Console.WriteLine();

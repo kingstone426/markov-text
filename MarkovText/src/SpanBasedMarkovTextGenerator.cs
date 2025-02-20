@@ -40,7 +40,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
     [GeneratedRegex(@"\s+")]
     private static partial Regex MultipleWhitespaceRegex();
 
-    public override string ToString() => "SpanBasedMarkovTextGenerator";
+    public override string ToString() => "Span";
 
     public void BuildMarkovModel(string corpus, int order = 2)
     {
