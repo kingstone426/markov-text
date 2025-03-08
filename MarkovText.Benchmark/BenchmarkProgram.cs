@@ -31,6 +31,7 @@ public class BenchmarkGenerateSentence
         yield return new StringBasedMarkovTextGenerator();
         yield return new ArrayBasedMarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
+        yield return new SpanBasedMarkovTextGenerator_CreateString();
     }
 }
 
@@ -60,5 +61,6 @@ public class BenchmarkBuildMarkovModel
         yield return new StringBasedMarkovTextGenerator();
         yield return new ArrayBasedMarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
+        yield return new SpanBasedMarkovTextGenerator_CreateString();
     }
 }

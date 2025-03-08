@@ -1,0 +1,203 @@
+﻿using System.Text;
+using System.Text.RegularExpressions;
+
+namespace MarkovText;
+
+/// <summary>
+/// Class that generates text based on the Markov chain algorithm
+/// </summary>
+public partial class SpanBasedMarkovTextGenerator_CreateString : IGenerator
+{
+    // Safety limit for longest sentence that can be generated, to prevent infinite loops
+    public int MaxWordCount
+    {
+        get => maxWordCount;
+        set
+        {
+            maxWordCount = value;
+            rangeSpan = new Range[MaxWordCount];
+        }
+    }
+
+    private int maxWordCount = 1000;
+
+    // Temporary array to store phrases while generating sentence
+    // By passing this to WriteSentence as a state variable, there is no closure overhead
+    // NOTE: This is NOT thread-safe
+    private Range[] rangeSpan;
+
+    // Temporary word count while generating sentence
+    // By passing this to WriteSentence as a state variable, there is no closure overhead
+    // NOTE: This is NOT thread-safe
+    private int wc;
+
+    // The order of the Markov chain (how many words in the "state" of the chain)
+    private int Order;
+
+    // Phrases at the start of sentences are the initial states of the Markov chain
+    private readonly List<Range> SentenceStarterPhrases = new();
+
+    // Maps prefix word phrases to suffix phrases, e.g., "the big dog" => "big dog was"
+    // Tuple also holds the last word of the suffix phrase, e.g., "was"
+    // Phrases are expected to be the first occurrences in the corpus
+    private readonly Dictionary<Range, List<Tuple<Range,Range>>> PhraseTransitions = new();
+
+    // The sanitized corpus
+    private ReadOnlyMemory<char> Corpus;
+
+    // Sentence delimiters used to detect sentence boundaries
+    private static readonly char[] SentenceDelimiters = { '.', '?', '!' };
+
+
+    public SpanBasedMarkovTextGenerator_CreateString()
+    {
+        rangeSpan = new Range[MaxWordCount];
+    }
+
+    [GeneratedRegex(@"\[.+?\]|\""|\)|\(|\'|\n|\r|“|”|’|_")]
+    private static partial Regex SanitizerRegex();
+
+    [GeneratedRegex("\n")]
+    private static partial Regex FixLineEndingsRegex();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex MultipleWhitespaceRegex();
+
+    public override string ToString() => "CreateString";
+
+    public void BuildMarkovModel(string corpus, int order = 2)
+    {
+        Order = order;
+
+        SentenceStarterPhrases.Clear();
+        PhraseTransitions.Clear();
+
+        AnalyzeCorpus(corpus);  // Analyze the corpus and build the Markov model
+
+        if (SentenceStarterPhrases.Count == 0)
+        {
+            throw new ArgumentException($"No phrases of order {Order} could be generated from the corpus: {corpus}");
+        }
+    }
+
+    public string GenerateSentence(IRandomNumberGenerator random)
+    {
+        if (SentenceStarterPhrases.Count == 0)
+        {
+            throw new InvalidOperationException($"There is no Markov model. You need to call {nameof(BuildMarkovModel)} first.");
+        }
+
+        var wordCount = Order;  // Track the current word count to prevent infinite loops
+        var phrase = SentenceStarterPhrases.Random(random); // Choose a random starter key from the available starter keys
+        rangeSpan[0] = phrase; // Write the entire sentence starter phrase
+        var stringLength = phrase.End.Value - phrase.Start.Value;
+
+        // Continuously generate words based on the Markov chain
+        while (PhraseTransitions.TryGetValue(phrase, out var possibleTransitions))
+        {
+            if (++wordCount >= MaxWordCount)    // Safety check to prevent infinite loops
+            {
+                throw new SentenceOverflowException($"Word limit {wordCount} reached for sentence");
+            }
+
+            (phrase, var lastWordInPhrase) = possibleTransitions.Random(random);
+
+            stringLength += 1 + lastWordInPhrase.End.Value - lastWordInPhrase.Start.Value;  // The 1 is for the space in between words
+            rangeSpan[wordCount-Order] = lastWordInPhrase; // Write the last word of the phrase
+        }
+
+        // Return the generated Markov text
+        wc = wordCount - Order;
+        return string.Create(stringLength, this, WriteSentence);
+    }
+
+    private static void WriteSentence(Span<char> buffer, SpanBasedMarkovTextGenerator_CreateString self)
+    {
+        var corpusSpan = self.Corpus.Span;
+
+        buffer.Fill(' '); // Adds spaces everywhere (between words)
+
+        for (var i = 0; i <= self.wc; i++)
+        {
+            var range = self.rangeSpan[i];
+            corpusSpan[range].CopyTo(buffer);
+            if (i < self.wc)
+            {
+                buffer = buffer.Slice(1 + range.End.Value - range.Start.Value); // The 1 is for the space in between words
+            }
+        }
+    }
+
+    private void AnalyzeCorpus(string corpus)
+    {
+        // Replace line endings (e.g., poem line breaks) with a space
+        corpus = FixLineEndingsRegex().Replace(corpus, " ");
+
+        // Remove unwanted characters like page numbers, quotes, parentheses, etc.
+        corpus = SanitizerRegex().Replace(corpus, "");
+
+        // Normalize multiple consecutive spaces into a single space
+        corpus = MultipleWhitespaceRegex().Replace(corpus, " ");
+
+        // Store the sanitized corpus
+        Corpus = corpus.AsMemory();
+
+        var corpusSpan = Corpus.Span;
+        var firstOccurrenceLookup = new Dictionary<string, Range>(); // Tracks the first occurrence of a phrase in the corpus
+        var slidingWindow = new CyclicArray<Range>(Order);
+        var wordCount = 0;
+        Range? previousRange = null;
+
+        foreach (var word in corpusSpan.Split(' ')) // Split the corpus into words
+        {
+            if (corpusSpan[word].IsWhiteSpace())
+            {
+                continue;
+            }
+
+            slidingWindow[wordCount] = word;
+
+            if (++wordCount < Order)
+            {
+                if (SentenceDelimiters.Contains(corpusSpan[word.End.Value-1]))
+                {
+                    previousRange = default;
+                    wordCount = 0;
+                }
+
+                continue;
+            }
+
+            var firstWord = slidingWindow[wordCount];
+            var lastWord = slidingWindow[wordCount - 1];
+            var phrase = new Range(firstWord.Start, lastWord.End);
+            var phraseString = corpusSpan[phrase].ToString();
+
+            if (!firstOccurrenceLookup.TryGetValue(phraseString, out var firstPhrase))
+            {
+                firstOccurrenceLookup.Add(phraseString, phrase);
+            }
+            else
+            {
+                phrase = firstPhrase;
+            }
+
+            if (previousRange == null)
+            {
+                SentenceStarterPhrases.Add(phrase);
+            }
+            else
+            {
+                PhraseTransitions.AddToList(previousRange.Value, new Tuple<Range, Range>(phrase, lastWord));
+            }
+
+            previousRange = phrase;
+
+            if (SentenceDelimiters.Contains(corpusSpan[phrase.End.Value-1]))
+            {
+                previousRange = default;
+                wordCount = 0;
+            }
+        }
+    }
+}

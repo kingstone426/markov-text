@@ -116,7 +116,7 @@ public class MarkovTextGenerator
         var corpus = File.ReadAllText(ArrayBasedMarkovTextGenerator.DefaultCorpusPath);
 
         IGenerator generator1 = new ArrayBasedMarkovTextGenerator();
-        IGenerator generator2 = new SpanBasedMarkovTextGenerator();
+        IGenerator generator2 = new SpanBasedMarkovTextGenerator_CreateString();
 
         generator1.BuildMarkovModel(corpus);
         generator2.BuildMarkovModel(corpus);
@@ -135,5 +135,6 @@ public class MarkovTextGenerator
         yield return new StringBasedMarkovTextGenerator();
         yield return new ArrayBasedMarkovTextGenerator();
         yield return new SpanBasedMarkovTextGenerator();
+        yield return new SpanBasedMarkovTextGenerator_CreateString();
     }
 }
