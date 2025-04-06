@@ -20,7 +20,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
     // Maps prefix word phrases to suffix phrases, e.g., "the big dog" => "big dog was"
     // Tuple also holds the last word of the suffix phrase, e.g., "was"
     // Phrases are expected to be the first occurrences in the corpus
-    private readonly Dictionary<Range, List<Tuple<Range,Range>>> PhraseTransitions = new();
+    private readonly Dictionary<Range, List<(Range,Range)>> PhraseTransitions = new();
 
     // The sanitized corpus
     private ReadOnlyMemory<char> Corpus;
@@ -147,7 +147,7 @@ public partial class SpanBasedMarkovTextGenerator : IGenerator
             }
             else
             {
-                PhraseTransitions.AddToList(previousRange.Value, new Tuple<Range, Range>(phrase, lastWord));
+                PhraseTransitions.AddToList(previousRange.Value, (phrase, lastWord));
             }
 
             previousRange = phrase;
