@@ -22,7 +22,7 @@ public partial class StringBasedMarkovTextGenerator : IGenerator
 
     // Maps prefix word phrases to suffix phrases, e.g., "the big dog" => "big dog was"
     // Tuple also holds the last word of the suffix phrase, e.g., "was"
-    private readonly Dictionary<string, List<Tuple<string,string>>> PhraseTransitions = new();
+    private readonly Dictionary<string, List<(string,string)>> PhraseTransitions = new();
 
     // Thread-local StringBuilder to avoid memory overhead from multiple threads
     private readonly ThreadLocal<StringBuilder> threadLocalStringBuilder = new(() => new StringBuilder());
@@ -131,7 +131,7 @@ public partial class StringBasedMarkovTextGenerator : IGenerator
             }
             else
             {
-                PhraseTransitions.AddToList(previousPhraseString, new Tuple<string, string>(phraseString, word));
+                PhraseTransitions.AddToList(previousPhraseString, (phraseString, word));
             }
 
             previousPhraseString = phraseString;
